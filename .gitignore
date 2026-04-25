@@ -1,0 +1,19 @@
+# Environments
+.venv/
+venv/
+env/
+__pycache__/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Backend logs and temp files
+backend.log
+backend.err.log
+.tempmediaStorage/
+scratchpad*/
+
+# Datasets
+Dataset/
