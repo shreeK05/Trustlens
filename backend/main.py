@@ -843,8 +843,8 @@ def _scrape_via_jina(url: str, asin: str = "") -> Optional[dict]:
                     if cleaned:
                         features.append(cleaned)
 
-        # Image extraction from Jina text
-        img_match = re.search(r"!\[.*?\]\((https://m\.media-amazon\.com/images/.*?)\)", text)
+        # Universal Image extraction from Jina text (supports Amazon, Flipkart, Myntra, etc.)
+        img_match = re.search(r"!\[.*?\]\((https?://.*?\.(?:jpg|jpeg|png|webp|gif).*?)\)", text, flags=re.IGNORECASE)
         image = img_match.group(1) if img_match else "https://placehold.co/400?text=No+Image"
 
         return {
