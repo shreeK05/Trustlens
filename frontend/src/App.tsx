@@ -27,7 +27,7 @@ import {
 // ─────────────────────────────────────────────────────────────────
 
 /** Safe nested object access helper for optional fields */
-const safeGet = <T,>(obj: Record<string, unknown> | null | undefined, path: string, fallback: T): T => {
+const safeGet = <T,>(obj: any, path: string, fallback: T): T => {
   try {
     const result = path.split(".").reduce((o: unknown, k: string) => {
       if (o && typeof o === 'object' && k in o) {
