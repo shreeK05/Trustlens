@@ -1033,10 +1033,10 @@ def generate_price_history(current_price: float, mrp: float, discount_pct: float
 # ── Main Analyze Endpoint ─────────────────────────────────────────
 # Updated to use new inference functions from Phase 2
 @app.post("/analyze")
-def analyze_product(request: AnalyzeRequest, http_request: Request):
+async def analyze_product(request: AnalyzeRequest, http_request: Request):
     """
     Production-grade endpoint: ML-powered product trust analysis.
-    - Scrapes live product data from Amazon
+    - Scrapes live product data from Amazon, Flipkart, etc.
     - Runs 5-module ML pipeline
     - Returns comprehensive trust score with SHAP-style explanations
     """
@@ -1050,7 +1050,7 @@ def analyze_product(request: AnalyzeRequest, http_request: Request):
     )
     
     t0 = time.time()
-    client_ip = req.client.host if req.client else "unknown"
+    client_ip = http_request.client.host if http_request and http_request.client else "unknown"
     ANALYZE_COUNTER.inc()
     
     try:
