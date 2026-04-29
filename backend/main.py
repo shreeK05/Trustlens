@@ -1147,7 +1147,7 @@ def analyze_product(request: AnalyzeRequest, http_request: Request):
             "trust_score": trust_result,
             "competitor_prices": competitor_prices,
             "analysis_meta": {
-                "version": "2.2-universal",
+                "version": "2.2.1-universal-fix",
                 "elapsed_seconds": elapsed,
                 "ml_modules": 5,
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
