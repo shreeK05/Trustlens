@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+pydantic
+python-multipart
+requests
+beautifulsoup4
+scikit-learn>=1.3.0
+xgboost>=2.0.0
+pandas>=2.0.0
+numpy>=1.24.0
+joblib
+nltk
+vaderSentiment
+cloudscraper
+imbalanced-learn
+prometheus_client
+redis>=4.5.0
