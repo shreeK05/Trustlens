@@ -121,7 +121,7 @@ type ProductInfo = {
   image: string;
   url: string;
   is_bestseller?: boolean;
-  data_quality?: Record<string, unknown>;
+  data_quality?: Record<string, any>;
   price_history?: { month: string; price: number }[];
 };
 
@@ -145,6 +145,8 @@ type AnalysisResult = {
     ml_modules?: number;
     timestamp?: string;
     source?: string;
+    cached?: boolean;
+    cache_ttl_seconds?: number;
   };
 };
 
