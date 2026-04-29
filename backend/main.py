@@ -917,6 +917,13 @@ def scrape_amazon(url: str) -> Optional[dict]:
                     soup = mobile_soup
                     extracted_price = mobile_price
 
+        # Final check if we have a valid product page
+        has_product_nodes = bool(
+            soup.select_one("#productTitle") or 
+            soup.select_one("#title") or 
+            soup.select_one("span.a-price-whole")
+        )
+
         if not has_product_nodes or not extracted_price:
             jina_data = _scrape_via_jina(url, asin)
             if jina_data and jina_data.get("price", 0) > 0:
