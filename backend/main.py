@@ -581,6 +581,56 @@ def _extract_reviews_from_text(text: str, title: str, rating: float = 4.0) -> li
     return []
 
 
+def _get_platform_from_url(url: str) -> str:
+    url_lower = url.lower()
+    if "amazon" in url_lower: return "amazon"
+    if "flipkart" in url_lower: return "flipkart"
+    if "myntra" in url_lower: return "myntra"
+    if "snapdeal" in url_lower: return "snapdeal"
+    if "jiomart" in url_lower: return "jiomart"
+    if "nykaa" in url_lower: return "nykaa"
+    if "ajio" in url_lower: return "ajio"
+    return "general"
+
+def _clean_text(text: str) -> str:
+    if not text: return ""
+    # Remove excessive whitespace, newlines, and non-printable chars
+    text = " ".join(text.split())
+    text = "".join(c for c in text if unicodedata.category(c)[0] != "C")
+    return html.unescape(text).strip()
+
+def _parse_money_to_int(text: str) -> int:
+    if not text: return 0
+    # Extract only digits from strings like "₹1,299.00"
+    digits = "".join(c for c in text if c.isdigit() or c == ".")
+    if not digits: return 0
+    try:
+        return int(float(digits))
+    except ValueError:
+        return 0
+
+def _scrape_via_jina(url: str) -> Optional[dict]:
+    """Universal scraper using Jina AI's Reader API."""
+    try:
+        jina_url = f"https://r.jina.ai/{url}"
+        headers = {"X-Return-Format": "json"}
+        import requests
+        resp = requests.get(jina_url, headers=headers, timeout=20)
+        if resp.status_code == 200:
+            json_data = resp.json().get("data", {})
+            return {
+                "title": json_data.get("title", ""),
+                "price": _parse_money_to_int(str(json_data.get("price") or 0)),
+                "mrp": _parse_money_to_int(str(json_data.get("mrp") or 0)),
+                "image": json_data.get("image", ""),
+                "review_texts": _extract_reviews_from_text(json_data.get("content", ""), json_data.get("title", ""))
+            }
+    except Exception:
+        pass
+    return None
+
+
+
 def _scrape_universal(url: str, platform: str) -> Optional[dict]:
     """Universal scraper fallback for non-Amazon sites like Flipkart, Myntra, etc."""
     logger.info(f"Using Universal Scraper for {platform}")
