@@ -1049,17 +1049,9 @@ def analyze_product(request: AnalyzeRequest, http_request: Request):
         compute_trust_score,
     )
     
-    client_ip = http_request.client.host if http_request and http_request.client else "unknown"
-    if _rate_limited(client_ip):
-        raise HTTPException(status_code=429, detail="Rate limit exceeded. Try again later.")
-
-    logger.info(f"/analyze request from {client_ip} -> {request.url}")
     t0 = time.time()
+    client_ip = req.client.host if req.client else "unknown"
     ANALYZE_COUNTER.inc()
-    with ANALYZE_DURATION.time():
-        # Attempt to use a cached analysis result (best-effort)
-        try:
-            asin_for_key = None
     
     try:
         # ── 1. Scrape Product Data ────────────────────────────────
@@ -1070,8 +1062,11 @@ def analyze_product(request: AnalyzeRequest, http_request: Request):
         cache_key = _cache_key_for_url(request.url)
         cached = _get_cached_response(cache_key)
         if cached:
-            cached["analysis_meta"]["cached"] = True
-            return JSONResponse(content=cached)
+            # Re-verify critical fields exist in cache
+            if "product" in cached and "ml_results" in cached:
+                cached.setdefault("analysis_meta", {})
+                cached["analysis_meta"]["cached"] = True
+                return JSONResponse(content=cached)
 
         # Scrape based on platform
         if platform == "amazon":
@@ -1152,11 +1147,12 @@ def analyze_product(request: AnalyzeRequest, http_request: Request):
             "trust_score": trust_result,
             "competitor_prices": competitor_prices,
             "analysis_meta": {
-                "version": "2.1-production",
+                "version": "2.2-universal",
                 "elapsed_seconds": elapsed,
                 "ml_modules": 5,
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                "source": "live_amazon_scrape",
+                "source": platform,
+                "cached": False
             }
         }
 
