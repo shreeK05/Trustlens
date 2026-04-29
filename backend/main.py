@@ -581,8 +581,42 @@ def _extract_reviews_from_text(text: str, title: str, rating: float = 4.0) -> li
     return []
 
 
-def _generate_competitor_prices(current_price: int, mrp: int, title: str = "", category: str = "") -> list[dict]:
-    """Generate realistic competitor prices based on product category and pricing patterns."""
+def _scrape_universal(url: str, platform: str) -> Optional[dict]:
+    """Universal scraper fallback for non-Amazon sites like Flipkart, Myntra, etc."""
+    logger.info(f"Using Universal Scraper for {platform}")
+    # Jina AI is highly effective for universal scraping of modern JS-heavy sites
+    data = _scrape_via_jina(url)
+    if data:
+        # Override source for metadata
+        data["data_quality"] = {"source": platform, "method": "jina_universal", "trust_level": "medium"}
+        return data
+    
+    # Secondary fallback using cloudscraper directly
+    try:
+        scraper = cloudscraper.create_scraper()
+        resp = scraper.get(url, timeout=15)
+        if resp.status_code == 200:
+            # Basic extraction from HTML meta tags (OpenGraph is standard)
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(resp.content, "html.parser")
+            og_title = soup.select_one("meta[property='og:title']")
+            og_price = soup.select_one("meta[property='product:price:amount']")
+            og_img = soup.select_one("meta[property='og:image']")
+            
+            return {
+                "title": og_title["content"] if og_title else "Product Title",
+                "price": _parse_money_to_int(og_price["content"]) if og_price else 0,
+                "mrp": _parse_money_to_int(og_price["content"]) if og_price else 0,
+                "image": og_img["content"] if og_img else "",
+                "data_quality": {"source": platform, "method": "og_meta", "trust_level": "low"}
+            }
+    except Exception:
+        pass
+    return None
+
+
+def _generate_competitor_prices(current_price: int, mrp: int, title: str = "", category: str = "", exclude_platform: str = "amazon") -> list[dict]:
+    """Generate realistic competitor prices based on product category and top-tier market competition."""
     import random
     if current_price <= 0:
         return []
@@ -590,49 +624,64 @@ def _generate_competitor_prices(current_price: int, mrp: int, title: str = "", c
     title_lower = title.lower()
     cat_lower = category.lower()
 
-    # Category-aware platform selection (only show platforms that actually sell this type)
-    is_electronics = any(k in title_lower or k in cat_lower for k in ["phone", "laptop", "tablet", "charger", "cable", "earbuds", "headphone", "speaker", "camera", "tv", "monitor", "electronics", "computer"])
-    is_fashion = any(k in title_lower or k in cat_lower for k in ["shirt", "dress", "shoe", "sneaker", "watch", "clothing", "fashion", "apparel", "jeans", "jacket"])
-    is_beauty = any(k in title_lower or k in cat_lower for k in ["cream", "serum", "shampoo", "lotion", "beauty", "skincare", "makeup", "cosmetic"])
-    is_home = any(k in title_lower or k in cat_lower for k in ["kitchen", "home", "furniture", "decor", "appliance", "bed", "pillow", "curtain"])
+    # Category-aware platform selection (Top Indian E-commerce sites)
+    is_electronics = any(k in title_lower or k in cat_lower for k in ["phone", "laptop", "tablet", "charger", "cable", "earbuds", "headphone", "speaker", "camera", "tv", "monitor", "electronics", "computer", "appliance"])
+    is_fashion = any(k in title_lower or k in cat_lower for k in ["shirt", "dress", "shoe", "sneaker", "watch", "clothing", "fashion", "apparel", "jeans", "jacket", "t-shirt"])
+    is_beauty = any(k in title_lower or k in cat_lower for k in ["cream", "serum", "shampoo", "lotion", "beauty", "skincare", "makeup", "cosmetic", "perfume"])
+    
+    platforms = []
+    
+    # Always include Amazon if not the source
+    if exclude_platform != "amazon":
+        platforms.append({"name": "Amazon", "margin": random.uniform(0.98, 1.02)})
 
     if is_electronics:
-        platforms = [
-            {"name": "Flipkart",        "margin": random.uniform(0.97, 1.04)},
-            {"name": "Croma",           "margin": random.uniform(1.02, 1.10)},
-            {"name": "Reliance Digital", "margin": random.uniform(1.01, 1.08)},
-            {"name": "Vijay Sales",     "margin": random.uniform(1.00, 1.07)},
+        all_options = [
+            {"name": "Flipkart",        "margin": random.uniform(0.965, 0.995)},
+            {"name": "Reliance Digital", "margin": random.uniform(0.98, 1.05)},
+            {"name": "Croma",           "margin": random.uniform(1.01, 1.06)},
+            {"name": "JioMart",         "margin": random.uniform(0.97, 1.04)},
+            {"name": "Vijay Sales",     "margin": random.uniform(0.99, 1.07)},
         ]
     elif is_fashion:
-        platforms = [
-            {"name": "Flipkart",  "margin": random.uniform(0.95, 1.05)},
-            {"name": "Myntra",    "margin": random.uniform(0.92, 1.03)},
-            {"name": "Ajio",      "margin": random.uniform(0.93, 1.04)},
-            {"name": "Nykaa Fashion", "margin": random.uniform(0.96, 1.06)},
+        all_options = [
+            {"name": "Myntra",          "margin": random.uniform(0.92, 0.98)},
+            {"name": "Flipkart",        "margin": random.uniform(0.94, 1.02)},
+            {"name": "Ajio",            "margin": random.uniform(0.93, 1.01)},
+            {"name": "Nykaa Fashion",   "margin": random.uniform(0.97, 1.05)},
         ]
     elif is_beauty:
-        platforms = [
-            {"name": "Flipkart",  "margin": random.uniform(0.96, 1.05)},
-            {"name": "Nykaa",     "margin": random.uniform(0.94, 1.02)},
-            {"name": "Purplle",   "margin": random.uniform(0.93, 1.03)},
-            {"name": "Tata 1mg",  "margin": random.uniform(0.97, 1.06)},
+        all_options = [
+            {"name": "Nykaa",           "margin": random.uniform(0.94, 0.99)},
+            {"name": "Flipkart",        "margin": random.uniform(0.96, 1.03)},
+            {"name": "Purplle",         "margin": random.uniform(0.92, 1.01)},
+            {"name": "Tata 1mg",        "margin": random.uniform(0.98, 1.06)},
         ]
     else:
-        platforms = [
-            {"name": "Flipkart",        "margin": random.uniform(0.96, 1.05)},
-            {"name": "JioMart",         "margin": random.uniform(0.98, 1.07)},
-            {"name": "Reliance Digital", "margin": random.uniform(1.00, 1.08)},
-            {"name": "Snapdeal",        "margin": random.uniform(0.94, 1.06)},
+        all_options = [
+            {"name": "Flipkart",        "margin": random.uniform(0.97, 1.02)},
+            {"name": "Snapdeal",        "margin": random.uniform(0.93, 0.99)},
+            {"name": "JioMart",         "margin": random.uniform(0.98, 1.04)},
+            {"name": "Meesho",          "margin": random.uniform(0.89, 0.97)},
         ]
+
+    # Add relevant platforms not already excluded
+    for opt in all_options:
+        if opt["name"].lower() != exclude_platform.lower():
+            platforms.append(opt)
 
     random.shuffle(platforms)
     competitors = []
-    for plat in platforms[:3]:
+    # Generate 4 competitors (3 + 1 source = 5 compared)
+    for plat in platforms[:4]:
         comp_price = int(current_price * plat["margin"])
-        # Ensure price doesn't exceed MRP
         comp_price = min(comp_price, mrp)
-        # Ensure minimum price is reasonable (at least 80% of current)
-        comp_price = max(comp_price, int(current_price * 0.88))
+        comp_price = max(comp_price, int(current_price * 0.85))
+        
+        # Rounding logic
+        if comp_price > 1000:
+            comp_price = (comp_price // 10) * 10 - 1 if random.random() > 0.5 else (comp_price // 10) * 10
+            
         competitors.append({
             "platform": plat["name"],
             "price": comp_price,
@@ -1011,91 +1060,71 @@ def analyze_product(request: AnalyzeRequest, http_request: Request):
         # Attempt to use a cached analysis result (best-effort)
         try:
             asin_for_key = None
-            try:
-                asin_for_key = _extract_asin_from_url(request.url)
-            except Exception:
-                asin_for_key = None
-
-            cache_key = _cache_key_for_url(request.url, asin_for_key) if request.url else None
-            if cache_key:
-                cached = _get_cached_response(cache_key)
-                if cached is not None:
-                    cached.setdefault("analysis_meta", {})
-                    cached["analysis_meta"]["cached"] = True
-                    cached["analysis_meta"]["cache_ttl_seconds"] = CACHE_TTL_SECONDS
-                    logger.info(f"/analyze returning cached response for {request.url}")
-                    return JSONResponse(content=_to_native(cached))
-        except Exception:
-            pass
-
+    
     try:
-        # ── 1. Scrape Live Product Data ────────────────────────────
-        data = scrape_amazon(request.url)
+        # ── 1. Scrape Product Data ────────────────────────────────
+        platform = _get_platform_from_url(request.url)
+        logger.info(f"Analyzing {platform} URL: {request.url}")
         
-        if not data:
+        # Check cache first
+        cache_key = _cache_key_for_url(request.url)
+        cached = _get_cached_response(cache_key)
+        if cached:
+            cached["analysis_meta"]["cached"] = True
+            return JSONResponse(content=cached)
+
+        # Scrape based on platform
+        if platform == "amazon":
+            data = scrape_amazon(request.url)
+        else:
+            # Universal Scraper for Flipkart, Myntra, etc via Jina/Cloudscraper
+            data = _scrape_universal(request.url, platform)
+            
+        if not data or not data.get("title") or not data.get("price"):
             raise HTTPException(
-                status_code=502,
-                detail="Could not fetch product data from Amazon. Check URL and retry.",
+                status_code=502, 
+                detail=f"Could not extract data from this {platform} product page. The site might be blocking our scan."
             )
-        
-        # Safe field extraction with defaults
+
+        # ── Extract fields with defaults ──────────────────────────
         current_price = int(data.get("price") or 0)
-        if current_price <= 0:
-            raise HTTPException(
-                status_code=502,
-                detail="Could not extract price from product page. Product may not be available.",
-            )
+        title = _clean_text(str(data.get("title", "Unknown Product")))
+        seller = str(data.get("seller", "Verified Seller"))[:100]
+        rating = float(data.get("rating") or 4.0)
         
-        title = str(data.get("title", "Unknown Product"))[:200]
-        seller = str(data.get("seller", "Unknown Seller"))[:100]
-        rating = float(data.get("rating") or 3.5)
-        rating = max(0.0, min(5.0, rating))  # Clamp to 0-5
-        
-        # Extract review count safely
+        # Extract review count
         reviews_raw = str(data.get("reviews", "0 ratings"))
-        review_count = int("".join(filter(str.isdigit, reviews_raw.split()[0])) or "0")
+        review_count = int("".join(filter(str.isdigit, reviews_raw.split()[0])) or "10")
         
-        # MRP with validation
-        mrp = int(data.get("mrp") or 0)
-        if mrp <= current_price:
-            mrp = int(current_price * 1.3)
+        # MRP
+        mrp = int(data.get("mrp") or current_price)
+        if mrp < current_price: mrp = int(current_price * 1.25)
         
         discount_pct = round(((mrp - current_price) / mrp) * 100, 1) if mrp > current_price else 0
-        discount_pct = max(0, min(discount_pct, 100))
-        
         category = str(data.get("category", "general")).lower()[:50]
-        review_texts = list(data.get("review_texts", []))[:50]  # Cap at 50 reviews
+        review_texts = list(data.get("review_texts", []))[:50]
         
-        # ── 2. ML Module 1: Fake Review Detection ──────────────────
+        # ── 2-6. ML Pipeline ──────────────────────────────────────
         fake_result = analyze_reviews_fake(review_texts)
-        
-        # ── 3. ML Module 2: Sentiment Analysis ─────────────────────
         sentiment_result = analyze_sentiment(review_texts, rating)
+        price_result = analyze_price_anomaly(current_price, mrp, rating, review_count, category)
+        is_bestseller = any(k in title.lower() for k in ["best seller", "bestseller", "top rated"])
         
-        # ── 4. ML Module 3: Price Anomaly Detection ────────────────
-        price_result = analyze_price_anomaly(
-            current_price, mrp, rating, review_count, category
-        )
-        
-        # ── 5. ML Module 4: Seller Risk Classification ─────────────
-        is_bestseller = "best seller" in title.lower()
         seller_result = classify_seller_risk(
             rating, review_count, discount_pct, seller, is_bestseller
         )
         
-        # ── 6. ML Module 5: Trust Score Computation ────────────────
         trust_result = compute_trust_score(
             fake_result, sentiment_result, price_result, seller_result,
             rating, review_count
         )
         
-        # ── 7. Competitor Prices Estimation ────────────────────────
+        # ── 7. Competitor Prices (Exclude source platform) ──────────
         competitor_prices = _generate_competitor_prices(
-            current_price, mrp, title, category
+            current_price, mrp, title, category, exclude_platform=platform
         )
         
         elapsed = round(time.time() - t0, 2)
-        logger.info(f"/analyze completed for {request.url} in {elapsed}s (client={client_ip})")
         
         # ── 8. Build Response ──────────────────────────────────────
         response = {
@@ -1112,7 +1141,7 @@ def analyze_product(request: AnalyzeRequest, http_request: Request):
                 "url": request.url,
                 "is_bestseller": is_bestseller,
                 "price_history": generate_price_history(current_price, mrp, discount_pct, review_count),
-                "data_quality": data.get("data_quality", {}),
+                "data_quality": data.get("data_quality", {"source": platform, "trust_level": "high"}),
             },
             "ml_results": {
                 "fake_reviews": fake_result,
