@@ -289,8 +289,8 @@ function buildSmoothAreaPath(points: ChartPoint[], baseline: number) {
 }
 
 function Gauge({ score, grade, verdict: backendVerdict, color: backendColor }: { score: number; grade: string; verdict?: string; color?: string }) {
-  const radius = 74;
-  const stroke = 10;
+  const radius = 62;
+  const stroke = 8;
   const norm = radius - stroke / 2;
   const circumference = Math.PI * norm;
   const dash = (score / 100) * circumference;
