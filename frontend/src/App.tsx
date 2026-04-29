@@ -617,8 +617,8 @@ export default function App() {
   const grade = safeGet(result, "trust_score.grade", "A");
   const verdict = safeGet(result, "trust_score.verdict", "A clean, premium summary of the product's trust signals.");
   const productTitle = safeGet(result, "product.title", "Scan an Amazon product URL to see a live trust assessment");
-  const productPrice = safeGet(result, "product.price", 0);
-  const productMrp = safeGet(result, "product.mrp", 0);
+  const productPrice = safeGet<number>(result, "product.price", 0);
+  const productMrp = safeGet<number>(result, "product.mrp", 0);
   const productImage = safeGet(result, "product.image", "");
   const productCategory = safeGet(result, "product.category", "Amazon product");
   const productBrand = safeGet(result, "product.category", "Live scan"); // Note: API doesn't return brand, use category
@@ -916,7 +916,7 @@ export default function App() {
                         </div>
                         <div>
                           <span>Confidence</span>
-                          <strong>{Math.round(safeGet(result, "trust_score.total_adjustment", 0) * 2 + 70)}%</strong>
+                          <strong>{Math.round(safeGet<number>(result, "trust_score.total_adjustment", 0) * 2 + 70)}%</strong>
                         </div>
                         <div>
                           <span>Risk label</span>
@@ -969,7 +969,7 @@ export default function App() {
                       </div>
                       <div>
                         <span>Avg fake probability</span>
-                        <strong>{formatPercent(safeGet(result, "ml_results.fake_reviews.avg_fake_probability", 0) * 100)}</strong>
+                        <strong>{formatPercent(safeGet<number>(result, "ml_results.fake_reviews.avg_fake_probability", 0) * 100)}</strong>
                       </div>
                     </div>
                   </article>
@@ -1010,7 +1010,7 @@ export default function App() {
                     </h4>
                     <div className="detail-kpi">
                       <strong>{safeGet(result, "ml_results.price_anomaly.is_anomaly", false) ? "Anomaly" : "Normal"}</strong>
-                      <span>{formatPercent(safeGet(result, "ml_results.price_anomaly.anomaly_score", 0) * 100)} anomaly score</span>
+                      <span>{formatPercent(safeGet<number>(result, "ml_results.price_anomaly.anomaly_score", 0) * 100)} anomaly score</span>
                     </div>
                     <div className="price-summary-grid">
                       <div>
