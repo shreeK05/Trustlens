@@ -70,6 +70,7 @@ type PriceAnomalyResult = {
   anomaly_score: number;
   discount_pct: number;
   price_trend: string;
+  vs_avg_history?: number;
   warnings?: string[];
   iso_forest_prediction?: string;
   lof_prediction?: string;
@@ -120,6 +121,8 @@ type ProductInfo = {
   image: string;
   url: string;
   is_bestseller?: boolean;
+  data_quality?: Record<string, unknown>;
+  price_history?: { month: string; price: number }[];
 };
 
 // ── ML Results Container ──

@@ -21,3 +21,7 @@
 [2026-04-29 14:24:38,759] INFO: /analyze returning cached response for https://www.amazon.in/dp/B0F43DMKDJ
 [2026-04-29 14:39:26,449] INFO: /analyze request from 127.0.0.1 -> https://amzn.in/d/02T9eL6r
 [2026-04-29 14:39:40,671] INFO: /analyze completed for https://amzn.in/d/02T9eL6r in 14.22s (client=127.0.0.1)
+[2026-04-29 15:02:01,363] INFO: Started cache refresh worker thread
+[2026-04-29 15:02:01,365] INFO: Redis not configured; using file cache and in-memory rate limiter
+[2026-04-29 15:10:38,221] INFO: /analyze request from 127.0.0.1 -> https://amzn.in/d/041QnIor
+[2026-04-29 15:10:59,732] INFO: /analyze completed for https://amzn.in/d/041QnIor in 21.51s (client=127.0.0.1)
