@@ -1116,15 +1116,15 @@ export default function App() {
 
                 <Sparkline history={previewHistory} isAnomaly={safeGet(result, "ml_results.price_anomaly.is_anomaly", false)} />
 
-                <div className="feedback-section" style={{ marginTop: '2rem', padding: '1.5rem', background: '#fff', borderRadius: '12px', border: '1px solid rgba(15, 23, 42, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Does this score look inaccurate?</h4>
-                    <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#64748b' }}>Your feedback helps retrain the AI models to improve accuracy.</p>
+                <div className="feedback-section card">
+                  <div className="feedback-section__content">
+                    <h4>Does this score look inaccurate?</h4>
+                    <p>Your feedback helps retrain the AI models to improve accuracy.</p>
                   </div>
                   {feedbackStatus ? (
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#10b981' }}>{feedbackStatus}</span>
+                    <span className="feedback-section__status">{feedbackStatus}</span>
                   ) : (
-                    <button onClick={reportInaccuracy} className="btn" style={{ background: '#f1f5f9', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button onClick={reportInaccuracy} className="btn btn--secondary btn--small">
                       <MessageSquareWarning size={16} /> Report inaccuracy
                     </button>
                   )}
