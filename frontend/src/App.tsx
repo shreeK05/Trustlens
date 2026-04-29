@@ -322,14 +322,10 @@ function Gauge({ score, grade, verdict: backendVerdict, color: backendColor }: {
         </text>
       </svg>
       <div className="gauge__value-row">
-        <span className="gauge__score">/ 100</span>
-        <span className="gauge__grade">Grade {grade}</span>
+        <div className="gauge__score">/ 100</div>
+        <div className="gauge__grade">Grade {grade}</div>
       </div>
-      <div className="gauge__summary">
-        <strong>{verdict}</strong>
-        <span>{score >= 85 ? "Strong confidence zone" : score >= 70 ? "Mixed signals detected" : "Needs a closer look"}</span>
-      </div>
-      <div className="gauge__badge" style={{ color, borderColor: `${color}33`, background: `${color}14` }}>
+      <div className="gauge__badge" style={{ backgroundColor: `${color}12`, color, borderColor: `${color}33` }}>
         {verdict}
       </div>
     </div>
