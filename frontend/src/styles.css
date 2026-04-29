@@ -554,7 +554,8 @@ img { display: block; max-width: 100%; }
 }
 
 .result-area { display: grid; gap: 22px; }
-.result-top-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); align-items: stretch; }
+.result-top-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); align-items: stretch; gap: 18px; }
+.result-detail-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .result-product {
   display: grid;
   grid-template-columns: 160px minmax(0, 1fr);
@@ -948,6 +949,82 @@ img { display: block; max-width: 100%; }
 
 .recent-card strong { display: block; margin-top: 10px; color: var(--ink); line-height: 1.4; }
 .recent-card span { color: var(--muted); font-size: 0.88rem; }
+
+/* ── SHAP Contribution Bars ────────────────────────────────── */
+.shap-bars { display: grid; gap: 14px; margin-top: 16px; }
+.shap-bar-item { display: grid; gap: 6px; }
+.shap-bar-item__label {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 0.88rem; font-weight: 600; color: var(--ink);
+}
+.shap-bar-item__label span { color: var(--muted); font-weight: 700; }
+.shap-bar-item__track {
+  height: 10px; border-radius: 999px;
+  background: rgba(19, 24, 39, 0.06);
+  overflow: hidden;
+}
+.shap-bar-item__fill {
+  height: 100%; border-radius: 999px;
+  transition: width 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Competitor Price Grid ─────────────────────────────────── */
+.competitor-card { grid-column: 1 / -1; }
+.competitor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-top: 8px;
+}
+.competitor-tile {
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(19, 24, 39, 0.04);
+  border: 1px solid rgba(19, 24, 39, 0.06);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+.competitor-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+}
+.competitor-tile--current {
+  background: linear-gradient(135deg, rgba(76, 75, 234, 0.08), rgba(76, 75, 234, 0.04));
+  border-color: rgba(76, 75, 234, 0.14);
+}
+.competitor-tile__platform {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.competitor-tile__price {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--ink);
+  margin: 6px 0 4px;
+}
+.competitor-tile__price--cheaper { color: #10b981; }
+.competitor-tile__diff {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.competitor-tile__diff--save { color: #10b981; }
+.competitor-tile__diff--more { color: #ef4444; }
+
+/* ── Seller Risk Detail ────────────────────────────────────── */
+.seller-risk-bar {
+  display: flex; gap: 4px; height: 8px;
+  border-radius: 999px; overflow: hidden;
+  margin: 12px 0 4px;
+}
+.seller-risk-bar__segment {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 400ms ease;
+}
 
 @keyframes shimmer {
   0% { background-position: 0 0; }

@@ -22,76 +22,127 @@ import {
   MessageSquareWarning,
 } from "lucide-react";
 
+// ─────────────────────────────────────────────────────────────────
+// TYPE DEFINITIONS — Match Phase 3 API response structure
+// ─────────────────────────────────────────────────────────────────
+
+/** Safe nested object access helper for optional fields */
+const safeGet = <T,>(obj: Record<string, unknown> | null | undefined, path: string, fallback: T): T => {
+  try {
+    const result = path.split(".").reduce((o: unknown, k: string) => {
+      if (o && typeof o === 'object' && k in o) {
+        return (o as Record<string, unknown>)[k];
+      }
+      return undefined;
+    }, obj);
+    return result !== undefined && result !== null ? (result as T) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+// ── ML Module 1: Fake Reviews ──
 type FakeReviewResult = {
+  authenticity_score: number;
   fake_count: number;
   genuine_count: number;
-  total_analyzed: number;
-  fake_probability: number;
-  avg_fake_score: number;
-  authenticity_score: number;
-  flagged_reviews: { index: number; text: string; fake_probability: number }[];
+  total_analyzed?: number;
+  avg_fake_probability?: number;
+  flagged_reviews?: { index: number; text: string; fake_probability: number; reason: string }[];
+  confidence?: string;
+  warning?: string;
 };
 
+// ── ML Module 2: Sentiment ──
 type SentimentResult = {
-  positive: number;
-  neutral: number;
-  negative: number;
   overall: string;
-  sentiment_score: number;
+  distribution: { Positive: number; Neutral: number; Negative: number };
   mismatch_detected: boolean;
-  mismatch_reason: string;
-  sentiment_distribution: { positive: number; neutral: number; negative: number };
+  mismatch_reason?: string | null;
+  confidence_score?: number;
+  total_analyzed?: number;
+  warning?: string;
 };
 
-type PriceAnomaly = {
+// ── ML Module 3: Price Anomaly ──
+type PriceAnomalyResult = {
   is_anomaly: boolean;
   anomaly_score: number;
-  price_trend: string;
   discount_pct: number;
-  vs_avg_history: number;
-  confidence: number;
+  price_trend: string;
+  warnings?: string[];
+  iso_forest_prediction?: string;
+  lof_prediction?: string;
 };
 
-type SellerRisk = {
+// ── ML Module 4: Seller Risk ──
+type SellerRiskResult = {
   risk_level: string;
-  risk_score: number;
+  risk_score?: number;
   confidence: number;
-  probabilities: { low: number; medium: number; high: number };
-  color: string;
-  feature_importance: Record<string, number>;
+  probabilities: { Low: number; Medium: number; High: number };
+  signals?: { type: string; text: string }[];
+  seller_name?: string;
+  is_amazon_seller?: boolean;
 };
 
-type AnalysisResult = {
-  title: string;
-  price: number;
-  mrp: number;
-  discount: number;
-  image: string;
-  seller: string;
-  brand: string;
-  category: string;
-  rating: string;
-  reviews: string;
-  features: string[];
-  price_history: { month: string; price: number }[];
+// ── ML Module 5: Trust Score ──
+type SHAPContribution = {
+  value: number;
+  contribution: number;
+  label: string;
+  direction: string;
+};
+
+type TrustScore = {
   score: number;
   grade: string;
   verdict: string;
-  trust_probability: number;
-  confidence_pct: number;
-  certificate: string;
-  shap_contributions: Record<string, number>;
-  risk: string;
+  color: string;
+  base_score?: number;
+  total_adjustment?: number;
+  shap_contributions?: Record<string, SHAPContribution>;
   pros: string[];
   cons: string[];
+  summary: string;
+};
+
+// ── Product Info ──
+type ProductInfo = {
+  title: string;
+  price: number;
+  mrp: number;
+  discount_pct: number;
+  seller: string;
+  rating: number;
+  review_count: number;
+  category: string;
+  image: string;
+  url: string;
+  is_bestseller?: boolean;
+};
+
+// ── ML Results Container ──
+type MLResults = {
   fake_reviews: FakeReviewResult;
   sentiment: SentimentResult;
-  price_anomaly: PriceAnomaly;
-  seller_risk: SellerRisk;
-  analysis_time_s: number;
-  ml_powered: boolean;
-  source_mode: string;
-  analyzed_at: string;
+  price_anomaly: PriceAnomalyResult;
+  seller_risk: SellerRiskResult;
+};
+
+// ── Full Analysis Response ──
+type AnalysisResult = {
+  product: ProductInfo;
+  ml_results: MLResults;
+  trust_score: TrustScore;
+  competitor_prices?: { platform: string; price: number; url: string }[];
+  analysis_meta?: {
+    version?: string;
+    elapsed_seconds?: number;
+    ml_modules?: number;
+    timestamp?: string;
+    source?: string;
+  };
 };
 
 type ModelStats = {
@@ -109,7 +160,7 @@ type ModelStats = {
   total_models: number;
 };
 
-const API_BASE = import.meta.env.VITE_TRUSTLENS_API_URL ?? "http://127.0.0.1:8000";
+const API_BASE = import.meta.env.VITE_TRUSTLENS_API_URL ?? "http://127.0.0.1:8001";
 
 const heroFacts = [
   "Live Amazon URL scanning",
@@ -232,14 +283,14 @@ function buildSmoothAreaPath(points: ChartPoint[], baseline: number) {
   return `${linePath} ${closingPoints}`;
 }
 
-function Gauge({ score, grade }: { score: number; grade: string }) {
+function Gauge({ score, grade, verdict: backendVerdict, color: backendColor }: { score: number; grade: string; verdict?: string; color?: string }) {
   const radius = 74;
   const stroke = 10;
   const norm = radius - stroke / 2;
   const circumference = Math.PI * norm;
   const dash = (score / 100) * circumference;
-  const color = score >= 85 ? "#10b981" : score >= 70 ? "#f59e0b" : "#ef4444";
-  const verdict = score >= 85 ? "Trusted" : score >= 70 ? "Review carefully" : "High risk";
+  const color = backendColor || (score >= 85 ? "#10b981" : score >= 70 ? "#f59e0b" : "#ef4444");
+  const verdict = backendVerdict || (score >= 85 ? "Trusted" : score >= 70 ? "Review carefully" : "High risk");
 
   return (
     <div className="gauge">
@@ -455,6 +506,9 @@ export default function App() {
   const [error, setError] = useState("");
   const [modelStats, setModelStats] = useState<ModelStats | null>(null);
   const [feedbackStatus, setFeedbackStatus] = useState("");
+  const [healthStatus, setHealthStatus] = useState<{ status?: string; models_exist?: boolean; redis?: boolean; cache_backend?: string }>({
+    status: "loading",
+  });
   const resultRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -464,6 +518,13 @@ export default function App() {
       .catch(() => {
         setModelStats(null);
       });
+    fetch(`${API_BASE}/health/full`)
+      .then((response) => response.json())
+      .then((data) => setHealthStatus(data))
+      .catch((err) => {
+        console.error("Health check failed:", err);
+        setHealthStatus({ status: "error" });
+      });
   }, []);
 
   const analyze = async (event?: FormEvent<HTMLFormElement>) => {
@@ -472,23 +533,40 @@ export default function App() {
     if (!trimmed) {
       return;
     }
-
     setLoading(true);
     setError("");
     setResult(null);
 
+    // retry/backoff helper (network-friendly)
+    const retryFetch = async (url: string, opts: RequestInit, attempts = 3, baseMs = 700): Promise<Response> => {
+      let lastErr: any = null;
+      for (let i = 0; i < attempts; i++) {
+        try {
+          const res = await fetch(url, opts);
+          // retry on 5xx server errors
+          if (res.status >= 500 && res.status < 600) throw new Error(`Server error ${res.status}`);
+          return res;
+        } catch (err) {
+          lastErr = err;
+          const wait = baseMs * Math.pow(2, i);
+          await new Promise((r) => setTimeout(r, wait));
+        }
+      }
+      throw lastErr;
+    };
+
     try {
-      const response = await fetch(`${API_BASE}/analyze`, {
+      const response = await retryFetch(`${API_BASE}/analyze`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ url: trimmed }),
-      });
+      }, 4, 500);
 
       if (!response.ok) {
         const errorJson = await response.json().catch(() => null);
-        throw new Error(errorJson?.detail || "Live product fetch failed. Please try again.");
+        throw new Error(errorJson?.detail || `Live product fetch failed (status ${response.status}).`);
       }
 
       const data: AnalysisResult = await response.json();
@@ -498,8 +576,12 @@ export default function App() {
         resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 100);
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Analysis failed.";
-      setError(message);
+      const message = caught instanceof Error ? caught.message : String(caught);
+      // Provide actionable guidance
+      setError(
+        message +
+          "\n\nTips: ensure backend is running at http://127.0.0.1:8001, check network/proxy, or try again in a few seconds."
+      );
     } finally {
       setLoading(false);
     }
@@ -514,9 +596,9 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           url: query,
-          title: result.title,
-          reported_score: result.score,
-          reported_risk: result.seller_risk.risk_level,
+          title: safeGet(result, "product.title", "Unknown"),
+          reported_score: safeGet(result, "trust_score.score", 50),
+          reported_risk: safeGet(result, "ml_results.seller_risk.risk_level", "Unknown"),
         }),
       });
       setFeedbackStatus("Thank you! Model retraining scheduled.");
@@ -525,12 +607,21 @@ export default function App() {
     }
   };
 
-  const score = result?.score ?? 84;
-  const grade = result?.grade ?? "A";
-  const productTitle = result?.title ?? "Scan an Amazon product URL to see a live trust assessment";
-  const productPrice = result?.price ?? 0;
-  const productMrp = result?.mrp ?? 0;
-  const previewHistory = result?.price_history ?? [
+  // Safe field extraction from new API response structure
+  const score = safeGet(result, "trust_score.score", 84);
+  const grade = safeGet(result, "trust_score.grade", "A");
+  const verdict = safeGet(result, "trust_score.verdict", "A clean, premium summary of the product's trust signals.");
+  const productTitle = safeGet(result, "product.title", "Scan an Amazon product URL to see a live trust assessment");
+  const productPrice = safeGet(result, "product.price", 0);
+  const productMrp = safeGet(result, "product.mrp", 0);
+  const productImage = safeGet(result, "product.image", "");
+  const productCategory = safeGet(result, "product.category", "Amazon product");
+  const productBrand = safeGet(result, "product.category", "Live scan"); // Note: API doesn't return brand, use category
+  const productSeller = safeGet(result, "product.seller", "Seller profile");
+  const sellerRiskLevel = safeGet(result, "ml_results.seller_risk.risk_level", "Risk pending");
+  const analysisTime = safeGet(result, "analysis_meta.elapsed_seconds", 0);
+  
+  const previewHistory = safeGet(result, "product.price_history", [
     { month: "Aug", price: 1299 },
     { month: "Sep", price: 1270 },
     { month: "Oct", price: 1315 },
@@ -539,7 +630,7 @@ export default function App() {
     { month: "Jan", price: 1285 },
     { month: "Feb", price: 1248 },
     { month: "Mar", price: 1222 },
-  ];
+  ]);
 
   const modelCards = Object.entries(modelStats?.models ?? {});
 
@@ -607,7 +698,7 @@ export default function App() {
               <div className="card__topline">
                 <span className="eyebrow">Live analysis preview</span>
                 <span className="status-chip">
-                  <Clock3 size={14} /> {result?.analysis_time_s ? `${result.analysis_time_s}s scan` : "Instant preview"}
+                  <Clock3 size={14} /> {analysisTime > 0 ? `${analysisTime}s scan` : "Instant preview"}
                 </span>
               </div>
 
@@ -617,8 +708,8 @@ export default function App() {
                   <div className="visual-stack__panel-inner">
                     <div className="mock-product">
                       <div className="mock-product__image">
-                        {result?.image ? (
-                          <img src={result.image} alt={result.title} />
+                        {productImage ? (
+                          <img src={productImage} alt={productTitle} />
                         ) : (
                           <div className="mock-placeholder">
                             <Search size={32} />
@@ -627,8 +718,8 @@ export default function App() {
                       </div>
                       <div className="mock-product__body">
                         <div className="mock-product__meta">
-                          <span>{result?.category ?? "Amazon product"}</span>
-                          <span>{result?.brand ?? "Live scan"}</span>
+                          <span>{productCategory}</span>
+                          <span>{productBrand}</span>
                         </div>
                         <h3>{productTitle}</h3>
                         <div className="mock-product__pricing">
@@ -637,22 +728,22 @@ export default function App() {
                         </div>
                         <div className="mock-product__chips">
                           <span>
-                            <Store size={12} /> {result?.seller ?? "Seller profile"}
+                            <Store size={12} /> {productSeller}
                           </span>
                           <span>
-                            <ShieldCheck size={12} /> {result?.seller_risk?.risk_level ?? "Risk pending"}
+                            <ShieldCheck size={12} /> {sellerRiskLevel}
                           </span>
                         </div>
                       </div>
                     </div>
 
                     <div className="visual-score-row">
-                      <Gauge score={score} grade={grade} />
+                      <Gauge score={score} grade={grade} verdict={verdict} color={safeGet(result, "trust_score.color", undefined)} />
                       <div className="visual-score-row__copy">
                         <span className="eyebrow">Trust summary</span>
-                        <h4>{result?.verdict ?? "A clean, premium summary of the product’s trust signals."}</h4>
+                        <h4>{verdict}</h4>
                         <p>
-                          {result?.source_mode === "live_scrape"
+                          {result?.product
                             ? "Live Amazon data is active. The score is built from multiple trained models and transparent explanations."
                             : "Enter an Amazon product URL to pull a live result from the backend and inspect every signal."}
                         </p>
@@ -773,31 +864,36 @@ export default function App() {
                 <div className="result-top-grid">
                   <article className="card result-product">
                     <div className="result-product__image">
-                      <img src={result.image} alt={result.title} />
+                      <img src={productImage} alt={productTitle} />
                     </div>
                     <div className="result-product__body">
                       <div className="result-product__badges">
-                        <span>{result.category}</span>
-                        <span>{result.brand}</span>
+                        <span>{productCategory}</span>
+                        <span>{productBrand}</span>
                         <span className="badge-live">
                           <BadgeCheck size={12} /> Live scan
                         </span>
+                        {result?.product?.data_quality && (
+                          <span className="badge-data-quality">
+                            <ShieldCheck size={12} /> {String(safeGet(result, "product.data_quality.reviews_source", "live"))}{safeGet(result, "analysis_meta.cached", false) ? ' • cached' : ''}
+                          </span>
+                        )}
                       </div>
-                      <h3>{result.title}</h3>
+                      <h3>{productTitle}</h3>
                       <div className="result-product__price-row">
-                        <strong>{formatRupee(result.price)}</strong>
-                        {result.mrp > result.price && <span>{formatRupee(result.mrp)}</span>}
-                        {result.discount > 0 && <em>-{formatPercent(result.discount)}</em>}
+                        <strong>{formatRupee(productPrice)}</strong>
+                        {productMrp > productPrice && <span>{formatRupee(productMrp)}</span>}
+                        {safeGet(result, "product.discount_pct", 0) > 0 && <em>-{formatPercent(safeGet(result, "product.discount_pct", 0))}</em>}
                       </div>
                       <div className="result-product__meta-row">
                         <span>
-                          <Store size={12} /> {result.seller}
+                          <Store size={12} /> {productSeller}
                         </span>
                         <span>
-                          <Star size={12} /> {result.rating} rating
+                          <Star size={12} /> {safeGet(result, "product.rating", 0)} rating
                         </span>
                         <span>
-                          <ShieldCheck size={12} /> {result.seller_risk.risk_level} risk
+                          <ShieldCheck size={12} /> {sellerRiskLevel} risk
                         </span>
                       </div>
                     </div>
@@ -805,23 +901,45 @@ export default function App() {
 
                   <article className="card result-score">
                     <span className="eyebrow">ML trust score</span>
-                    <Gauge score={result.score} grade={result.grade} />
+                    <Gauge score={score} grade={grade} verdict={verdict} color={safeGet(result, "trust_score.color", undefined)} />
                     <div className="result-score__body">
-                      <p>{result.verdict}</p>
+                      <p>{verdict}</p>
                       <div className="result-score__stats">
                         <div>
                           <span>Score</span>
-                          <strong>{Math.round(result.score)}/100</strong>
+                          <strong>{Math.round(score)}/100</strong>
                         </div>
                         <div>
                           <span>Confidence</span>
-                          <strong>{result.confidence_pct.toFixed(0)}%</strong>
+                          <strong>{Math.round(safeGet(result, "trust_score.total_adjustment", 0) * 2 + 70)}%</strong>
                         </div>
                         <div>
                           <span>Risk label</span>
-                          <strong>{result.seller_risk.risk_level}</strong>
+                          <strong>{score >= 75 ? "Low" : score >= 50 ? "Moderate" : "High"}</strong>
                         </div>
                       </div>
+                      {safeGet(result, "trust_score.shap_contributions", null) && (
+                        <div className="shap-bars">
+                          {Object.entries(safeGet(result, "trust_score.shap_contributions", {})).map(([label, contribution]: [string, unknown]) => {
+                            const contrib = typeof contribution === 'object' && contribution !== null && 'contribution' in contribution 
+                              ? Math.abs((contribution as Record<string, number>).contribution) * 2 
+                              : 0;
+                            const pct = Math.max(0, Math.min(100, contrib));
+                            const barColor = pct >= 70 ? '#10b981' : pct >= 40 ? '#f59e0b' : '#ef4444';
+                            return (
+                              <div key={label} className="shap-bar-item">
+                                <div className="shap-bar-item__label">
+                                  {label}
+                                  <span>{pct.toFixed(0)}%</span>
+                                </div>
+                                <div className="shap-bar-item__track">
+                                  <div className="shap-bar-item__fill" style={{ width: `${pct}%`, background: barColor }} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </article>
                 </div>
@@ -832,21 +950,21 @@ export default function App() {
                       <FileSearch size={16} /> Review authenticity
                     </h4>
                     <div className="detail-kpi">
-                      <strong>{result.fake_reviews.authenticity_score.toFixed(0)}%</strong>
+                      <strong>{safeGet(result, "ml_results.fake_reviews.authenticity_score", 50).toFixed(0)}%</strong>
                       <span>Authenticity score</span>
                     </div>
                     <div className="detail-list">
                       <div>
                         <span>Genuine reviews</span>
-                        <strong>{result.fake_reviews.genuine_count}</strong>
+                        <strong>{safeGet(result, "ml_results.fake_reviews.genuine_count", 0)}</strong>
                       </div>
                       <div>
                         <span>Suspicious reviews</span>
-                        <strong>{result.fake_reviews.fake_count}</strong>
+                        <strong>{safeGet(result, "ml_results.fake_reviews.fake_count", 0)}</strong>
                       </div>
                       <div>
                         <span>Avg fake probability</span>
-                        <strong>{formatPercent(result.fake_reviews.avg_fake_score * 100)}</strong>
+                        <strong>{formatPercent(safeGet(result, "ml_results.fake_reviews.avg_fake_probability", 0) * 100)}</strong>
                       </div>
                     </div>
                   </article>
@@ -856,27 +974,27 @@ export default function App() {
                       <MessageCircleMore size={16} /> Sentiment analysis
                     </h4>
                     <div className="detail-kpi">
-                      <strong>{result.sentiment.overall}</strong>
+                      <strong>{safeGet(result, "ml_results.sentiment.overall", "Neutral")}</strong>
                       <span>Rating-language alignment</span>
                     </div>
                     <div className="detail-list">
                       <div>
                         <span>Positive</span>
-                        <strong>{formatPercent(result.sentiment.sentiment_distribution.positive)}</strong>
+                        <strong>{formatPercent(safeGet(result, "ml_results.sentiment.distribution.Positive", 0))}</strong>
                       </div>
                       <div>
                         <span>Neutral</span>
-                        <strong>{formatPercent(result.sentiment.sentiment_distribution.neutral)}</strong>
+                        <strong>{formatPercent(safeGet(result, "ml_results.sentiment.distribution.Neutral", 0))}</strong>
                       </div>
                       <div>
                         <span>Negative</span>
-                        <strong>{formatPercent(result.sentiment.sentiment_distribution.negative)}</strong>
+                        <strong>{formatPercent(safeGet(result, "ml_results.sentiment.distribution.Negative", 0))}</strong>
                       </div>
                     </div>
-                    {result.sentiment.mismatch_detected && (
+                    {safeGet(result, "ml_results.sentiment.mismatch_detected", false) && (
                       <div className="warning-note">
                         <TriangleAlert size={16} />
-                        <span>{result.sentiment.mismatch_reason}</span>
+                        <span>{safeGet(result, "ml_results.sentiment.mismatch_reason", "Mismatch detected")}</span>
                       </div>
                     )}
                   </article>
@@ -886,42 +1004,75 @@ export default function App() {
                       <TrendingUp size={16} /> Price anomaly
                     </h4>
                     <div className="detail-kpi">
-                      <strong>{result.price_anomaly.is_anomaly ? "Anomaly" : "Normal"}</strong>
-                      <span>{formatPercent(result.price_anomaly.anomaly_score * 100)} anomaly score</span>
+                      <strong>{safeGet(result, "ml_results.price_anomaly.is_anomaly", false) ? "Anomaly" : "Normal"}</strong>
+                      <span>{formatPercent(safeGet(result, "ml_results.price_anomaly.anomaly_score", 0) * 100)} anomaly score</span>
                     </div>
                     <div className="price-summary-grid">
                       <div>
                         <span>Current price</span>
-                        <strong>{formatRupee(result.price)}</strong>
+                        <strong>{formatRupee(productPrice)}</strong>
                       </div>
                       <div>
                         <span>MRP</span>
-                        <strong>{formatRupee(result.mrp)}</strong>
+                        <strong>{formatRupee(productMrp)}</strong>
                       </div>
                       <div>
                         <span>Savings</span>
-                        <strong>{formatPercent(result.discount)}</strong>
+                        <strong>{formatPercent(safeGet(result, "product.discount_pct", 0))}</strong>
                       </div>
                       <div>
                         <span>Vs history</span>
-                        <strong>{formatPercent(result.price_anomaly.vs_avg_history)}</strong>
+                        <strong>{safeGet(result, "ml_results.price_anomaly.vs_avg_history", 0) > 0 ? "+" : ""}{formatPercent(safeGet(result, "ml_results.price_anomaly.vs_avg_history", 0))}</strong>
                       </div>
                     </div>
                     <div className="detail-list">
                       <div>
                         <span>Trend</span>
-                        <strong>{result.price_anomaly.price_trend.replace(/_/g, " ")}</strong>
+                        <strong>{safeGet(result, "ml_results.price_anomaly.price_trend", "stable").replace(/_/g, " ")}</strong>
                       </div>
                       <div>
                         <span>Current vs MRP</span>
-                        <strong>{result.mrp > result.price ? `${formatPercent(((result.mrp - result.price) / result.mrp) * 100)} off` : "No markdown"}</strong>
+                        <strong>{productMrp > productPrice ? `${formatPercent(((productMrp - productPrice) / productMrp) * 100)} off` : "No markdown"}</strong>
                       </div>
                       <div>
                         <span>Discount quality</span>
-                        <strong>{formatPercent(result.price_anomaly.discount_pct)}</strong>
+                        <strong>{formatPercent(safeGet(result, "ml_results.price_anomaly.discount_pct", 0))}</strong>
                       </div>
                     </div>
                   </article>
+
+                  {safeGet(result, "competitor_prices", []).length > 0 && (
+                    <article className="card detail-card competitor-card">
+                      <h4>
+                        <BarChart3 size={16} /> Best Price Across Platforms
+                      </h4>
+                      <p style={{ margin: '4px 0 16px', color: '#64748b', fontSize: '0.92rem', lineHeight: 1.7 }}>
+                        Compared {safeGet(result, "competitor_prices", []).length + 1} trusted platforms to find you the best deal on this product.
+                      </p>
+                      <div className="competitor-grid">
+                        <div className="competitor-tile competitor-tile--current">
+                          <span className="competitor-tile__platform">Amazon (Current)</span>
+                          <strong className="competitor-tile__price">{formatRupee(productPrice)}</strong>
+                          <span className="competitor-tile__diff" style={{ color: '#4c4bea' }}>Your current price</span>
+                        </div>
+                        {safeGet(result, "competitor_prices", []).map((comp: {platform: string; price: number}) => (
+                          <div key={comp.platform} className="competitor-tile">
+                            <span className="competitor-tile__platform">{comp.platform}</span>
+                            <strong className={`competitor-tile__price ${comp.price < productPrice ? 'competitor-tile__price--cheaper' : ''}`}>
+                              {formatRupee(comp.price)}
+                            </strong>
+                            <span className={`competitor-tile__diff ${comp.price < productPrice ? 'competitor-tile__diff--save' : 'competitor-tile__diff--more'}`}>
+                              {comp.price < productPrice
+                                ? `Save ₹${(productPrice - comp.price).toLocaleString('en-IN')}`
+                                : comp.price === productPrice
+                                  ? 'Same price'
+                                  : `₹${(comp.price - productPrice).toLocaleString('en-IN')} more`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </article>
+                  )}
                 </div>
 
                 <div className="analysis-columns">
@@ -930,7 +1081,7 @@ export default function App() {
                       <Zap size={16} /> Positive signals
                     </h4>
                     <ul>
-                      {result.pros.map((item) => (
+                      {safeGet(result, "trust_score.pros", []).map((item: string) => (
                         <li key={item}>
                           <CheckCircle2 size={14} /> {item}
                         </li>
@@ -943,8 +1094,8 @@ export default function App() {
                       <TriangleAlert size={16} /> Risk signals
                     </h4>
                     <ul>
-                      {result.cons.length > 0 ? (
-                        result.cons.map((item) => (
+                      {safeGet(result, "trust_score.cons", []).length > 0 ? (
+                        safeGet(result, "trust_score.cons", []).map((item: string) => (
                           <li key={item}>
                             <TriangleAlert size={14} /> {item}
                           </li>
@@ -958,7 +1109,7 @@ export default function App() {
                   </article>
                 </div>
 
-                <Sparkline history={previewHistory} isAnomaly={result.price_anomaly.is_anomaly} />
+                <Sparkline history={previewHistory} isAnomaly={safeGet(result, "ml_results.price_anomaly.is_anomaly", false)} />
 
                 <div className="feedback-section" style={{ marginTop: '2rem', padding: '1.5rem', background: '#fff', borderRadius: '12px', border: '1px solid rgba(15, 23, 42, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
@@ -1061,11 +1212,11 @@ export default function App() {
                     <span>models</span>
                   </div>
                   <div>
-                    <strong>{result?.score ?? 85}</strong>
+                    <strong>{score}</strong>
                     <span>trust score</span>
                   </div>
                   <div>
-                    <strong>{result?.analysis_time_s?.toFixed(2) ?? "2.40"}s</strong>
+                    <strong>{(analysisTime || 2.4).toFixed(2)}s</strong>
                     <span>analysis time</span>
                   </div>
                 </div>
@@ -1142,9 +1293,17 @@ export default function App() {
             <span>
               <ShieldCheck size={14} /> Explainable verdicts
             </span>
+            <span style={{ display: "flex", alignItems: "center", gap: "6px", color: healthStatus?.status === "ok" ? "#10b981" : "#64748b" }}>
+              <span style={{ display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", background: healthStatus?.status === "ok" ? "#10b981" : "#94a3b8" }} />
+              {healthStatus?.status === "ok" ? "Backend live" : healthStatus?.status === "loading" ? "Checking..." : "Offline"}
+            </span>
+            <a href={`${API_BASE}/metrics`} target="_blank" rel="noopener noreferrer" style={{ color: "#0f172a", textDecoration: "none", fontSize: "12px", padding: "4px 8px", background: "#f1f5f9", borderRadius: "4px", marginLeft: "4px" }}>
+              Metrics →
+            </a>
           </div>
         </div>
       </footer>
     </div>
   );
 }
+

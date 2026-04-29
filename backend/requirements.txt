@@ -13,3 +13,5 @@ nltk
 vaderSentiment
 cloudscraper
 imbalanced-learn
+prometheus_client
+redis>=4.5.0

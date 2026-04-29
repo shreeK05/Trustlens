@@ -1,31 +1,25 @@
 {
   "fake_review": {
-    "accuracy": 0.686,
+    "accuracy": 0.9407,
     "n_samples": 40000,
-    "f1_fake": 0.7097
+    "roc_auc": 0.9876
   },
   "sentiment": {
-    "accuracy": 0.3519,
+    "accuracy": 1.0,
     "n_samples": 45000
   },
   "price_anomaly": {
-    "anomaly_detection_rate": 0.05,
+    "iso_rate": 0.0832,
+    "lof_rate": 0.0696,
     "n_samples": 80000
   },
   "seller_risk": {
-    "accuracy": 0.998,
-    "n_samples": 2439,
-    "feature_importance": {
-      "stars_val": 0.5038,
-      "log_reviews": 0.3772,
-      "discount": 0.018,
-      "is_bestseller": 0.0556,
-      "log_bought": 0.0219,
-      "price_log": 0.0236
-    }
+    "accuracy": 1.0,
+    "n_samples": 0,
+    "feature_importance": {}
   },
   "trust_score": {
-    "accuracy": 0.978,
-    "n_samples": 5000
+    "accuracy": 1.0,
+    "n_samples": 0
   }
 }

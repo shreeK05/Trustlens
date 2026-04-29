@@ -1,0 +1,23 @@
+[2026-04-29 12:05:50,920] INFO: Started cache refresh worker thread
+[2026-04-29 12:05:50,921] INFO: Redis not configured; using file cache and in-memory rate limiter
+[2026-04-29 12:06:35,090] INFO: Cache refreshed: f0915c2fd32b439a3ec551a7cf38aff01acd5922b43cfae80245f3118e29ee0c -> REDMI Note 15 5G (Mist Purple, 8GB RAM 128GB Storage) | 108MP OIS Camera | Snapdragon 6 Gen 3 | 17.2cm Tough Curved AMOLED Screen | Segment’s Slimmest Phone | 5520mAh Si/C Battery | 45W Fast Charging
+[2026-04-29 12:19:18,721] INFO: Started cache refresh worker thread
+[2026-04-29 12:19:18,721] INFO: Redis not configured; using file cache and in-memory rate limiter
+[2026-04-29 14:02:35,700] INFO: Started cache refresh worker thread
+[2026-04-29 14:02:35,702] INFO: Redis not configured; using file cache and in-memory rate limiter
+[2026-04-29 14:03:24,830] INFO: /analyze request from 127.0.0.1 -> https://www.amazon.in/dp/B0F43DMKDJ
+[2026-04-29 14:03:52,751] INFO: /analyze completed for https://www.amazon.in/dp/B0F43DMKDJ in 27.92s (client=127.0.0.1)
+[2026-04-29 14:04:27,163] INFO: /analyze request from 127.0.0.1 -> https://www.amazon.in/dp/B0F43DMKDJ
+[2026-04-29 14:04:27,165] INFO: /analyze returning cached response for https://www.amazon.in/dp/B0F43DMKDJ
+[2026-04-29 14:08:29,372] INFO: /analyze request from 127.0.0.1 -> https://www.amazon.in/dp/B0F43DMKDJ
+[2026-04-29 14:08:29,374] INFO: /analyze returning cached response for https://www.amazon.in/dp/B0F43DMKDJ
+[2026-04-29 14:18:22,450] INFO: /analyze request from 127.0.0.1 -> https://amzn.in/d/07NkCd6Q
+[2026-04-29 14:18:39,353] INFO: /analyze completed for https://amzn.in/d/07NkCd6Q in 16.9s (client=127.0.0.1)
+[2026-04-29 14:23:47,957] INFO: Started cache refresh worker thread
+[2026-04-29 14:23:47,957] INFO: Redis not configured; using file cache and in-memory rate limiter
+[2026-04-29 14:23:58,853] INFO: /analyze request from 127.0.0.1 -> https://www.amazon.in/dp/B0F43DMKDJ
+[2026-04-29 14:23:58,856] INFO: /analyze returning cached response for https://www.amazon.in/dp/B0F43DMKDJ
+[2026-04-29 14:24:38,757] INFO: /analyze request from 127.0.0.1 -> https://www.amazon.in/dp/B0F43DMKDJ
+[2026-04-29 14:24:38,759] INFO: /analyze returning cached response for https://www.amazon.in/dp/B0F43DMKDJ
+[2026-04-29 14:39:26,449] INFO: /analyze request from 127.0.0.1 -> https://amzn.in/d/02T9eL6r
+[2026-04-29 14:39:40,671] INFO: /analyze completed for https://amzn.in/d/02T9eL6r in 14.22s (client=127.0.0.1)
