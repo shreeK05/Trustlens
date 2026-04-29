@@ -165,13 +165,13 @@ type ModelStats = {
   total_models: number;
 };
 
-const API_BASE = import.meta.env.VITE_TRUSTLENS_API_URL ?? "http://127.0.0.1:8001";
+const API_BASE = import.meta.env.VITE_TRUSTLENS_API_URL ?? (window.location.hostname === "localhost" ? "http://127.0.0.1:8001" : "https://trustlens-55x3.onrender.com");
 
 const heroFacts = [
-  "Live Amazon URL scanning",
+  "Live multi-platform scanning",
   "5-model trust pipeline",
   "Explainable verdicts",
-  "Local backend inference",
+  "Cloud-based ML inference",
 ];
 
 const featureCards = [
@@ -585,7 +585,7 @@ export default function App() {
       // Provide actionable guidance
       setError(
         message +
-          "\n\nTips: ensure backend is running at http://127.0.0.1:8001, check network/proxy, or try again in a few seconds."
+          `\n\nTips: ensure backend is running at ${API_BASE}, check network/proxy, or try again in a few seconds.`
       );
     } finally {
       setLoading(false);
@@ -672,12 +672,12 @@ export default function App() {
             <div className="hero__copy">
               <div className="eyebrow-row">
                 <span className="eyebrow-chip">
-                  <Sparkles size={14} /> Real Amazon trust scoring
+                  <Sparkles size={14} /> Multi-platform trust scoring
                 </span>
               </div>
               <h1>Know what’s safe before you buy.</h1>
               <p className="hero__lead">
-                TrustLens AI analyzes Amazon product pages with a 5-model pipeline for fake reviews,
+                TrustLens AI analyzes product pages with a 5-model pipeline for fake reviews,
                 price anomalies, sentiment quality, seller risk, and explainable trust scoring.
               </p>
               <div className="hero__actions">
@@ -801,20 +801,20 @@ export default function App() {
           <div className="container analyzer-shell">
             <SectionHeading
               kicker="Analyzer"
-              title="Scan any Amazon product URL"
-              text="Paste a product link and get a clean, explainable trust assessment. No synthetic product output is shown if the backend cannot verify the page."
+              title="Scan any Product URL"
+              text="Paste a product link from Amazon, Flipkart, or Myntra to get a clean, explainable trust assessment."
             />
 
             <form className="analysis-form card" onSubmit={analyze}>
               <label className="analysis-form__label" htmlFor="product-url">
-                Amazon product URL
+                Product URL (Amazon, Flipkart, etc.)
               </label>
               <div className="analysis-form__row">
                 <input
                   id="product-url"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="https://amzn.in/d/... or a full amazon.in product page"
+                  placeholder="Paste Amazon, Flipkart, or Myntra link here..."
                 />
                 <button type="submit" className="btn btn--primary" disabled={loading}>
                   {loading ? "Analyzing..." : "Analyze now"}
@@ -822,7 +822,7 @@ export default function App() {
                 </button>
               </div>
               <p className="analysis-form__note">
-                Live-only output: if Amazon blocks the fetch, the backend returns a clear error instead of fake product data.
+                Live-only output: if the platform blocks the fetch, the backend returns a clear error instead of fake product data.
               </p>
             </form>
 
